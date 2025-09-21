@@ -1,0 +1,43 @@
+name: deploy-to-224
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    # твой self-hosted раннер на 192.168.88.218
+    runs-on: self-hosted   # (можешь указать метки, если добавлял: [self-hosted, Linux, X64])
+    env:
+      TARGET_HOST: 192.168.88.224
+      TARGET_USER: deploy
+      TARGET_PATH: /var/www/deploy
+      SSH_KEY: /home/actions-runner/.ssh/id_rsa   # путь к приватному ключу на раннере
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add target to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p 22 "$TARGET_HOST" >> ~/.ssh/known_hosts
+
+      - name: Rsync code -> target
+        run: |
+          rsync -az --delete \
+            -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
+            ./ "${TARGET_USER}@${TARGET_HOST}:${TARGET_PATH}/"
+
+      # ПО ЖЕЛАНИЮ: пост-скрипт на целевой машине (composer/npm/docker и т.п.)
+      - name: Remote post-deploy
+        run: |
+          ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no \
+            "${TARGET_USER}@${TARGET_HOST}" 'bash -s' <<'REMOTE'
+          set -e
+          cd /var/www/deploy
+          # примеры (убери, если не нужно):
+          # if [ -f backend/composer.json ]; then (cd backend && composer install --no-dev --optimize-autoloader); fi
+          # docker compose pull || true
+          # docker compose up -d --build
+          ls -la
+          REMOTE
