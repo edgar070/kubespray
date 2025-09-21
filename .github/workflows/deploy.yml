@@ -25,17 +25,18 @@ jobs:
             -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
             ./ "${{ vars.TARGET_USER }}@${{ vars.TARGET_HOST }}:${{ vars.TARGET_PATH }}/"
 
-      - name: Remote post-deploy: build & up
+      - name: Remote post-deploy
         run: |
-          ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no \
-            "${{ vars.TARGET_USER }}@${{ vars.TARGET_HOST }}" 'bash -s' <<'REMOTE'
+          ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "${{ vars.TARGET_USER }}@${{ vars.TARGET_HOST }}" 'bash -s' <<'REMOTE'
           set -e
           cd "${{ vars.TARGET_PATH }}"
-          # (если нужно) зависимости приложений здесь: composer/npm и т.п.
-
-          # docker compose (код уже в /var/www/deploy)
-          docker compose pull || true
-          docker compose build
-          docker compose up -d
+          # выбрать docker compose v2 или v1
+          if docker compose version >/dev/null 2>&1; then DC="docker compose"; \
+          elif command -v docker-compose >/dev/null 2>&1; then DC="docker-compose"; \
+          else echo "Docker Compose not found"; exit 1; fi
+          # если есть образы из реестра — подтянуть; иначе можно убрать
+          $DC pull || true
+          $DC up -d --build
+          $DC ps
           docker image prune -af || true
           REMOTE
