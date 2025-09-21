@@ -2,7 +2,7 @@ name: deploy-to-224
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 jobs:
   deploy:
