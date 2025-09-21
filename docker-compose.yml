@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  php:
+    image: php:8.2-fpm
+    working_dir: /var/www/deploy
+    volumes:
+      - /var/www/deploy:/var/www/deploy
+    # при желании: healthcheck, env, etc.
+
+  nginx:
+    image: nginx:alpine
+    depends_on: [php]
+    volumes:
+      - /var/www/deploy:/var/www/deploy
+      - /var/www/deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+
+  # пример фронта со статикой под тем же путём
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - /var/www/deploy:/var/www/deploy
+      - /var/www/deploy/frontend.nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"

@@ -21,14 +21,21 @@ jobs:
       - name: Rsync code -> target
         run: |
           rsync -az --delete \
+            --exclude ".git/" --exclude ".github/" \
             -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" \
             ./ "${{ vars.TARGET_USER }}@${{ vars.TARGET_HOST }}:${{ vars.TARGET_PATH }}/"
 
-      - name: Remote post-deploy
+      - name: Remote post-deploy: build & up
         run: |
           ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no \
             "${{ vars.TARGET_USER }}@${{ vars.TARGET_HOST }}" 'bash -s' <<'REMOTE'
           set -e
           cd "${{ vars.TARGET_PATH }}"
-          ls -la
+          # (если нужно) зависимости приложений здесь: composer/npm и т.п.
+
+          # docker compose (код уже в /var/www/deploy)
+          docker compose pull || true
+          docker compose build
+          docker compose up -d
+          docker image prune -af || true
           REMOTE
